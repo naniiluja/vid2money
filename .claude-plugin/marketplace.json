@@ -1,6 +1,9 @@
 {
   "name": "video-storyteller-market",
-  "owner": "naniiluja",
+  "owner": {
+    "name": "naniiluja",
+    "url": "https://github.com/naniiluja"
+  },
   "plugins": [
     {
       "name": "video-storyteller",
