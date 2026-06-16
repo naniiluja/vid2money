@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "hook", "character_sheet_prompt", "scenes"],
+  "properties": {
+    "title": { "type": "string" },
+    "hook": { "type": "string" },
+    "character_sheet_prompt": { "type": "string" },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "narration", "image_prompt"],
+        "properties": {
+          "id": { "type": "integer" },
+          "narration": { "type": "string" },
+          "image_prompt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

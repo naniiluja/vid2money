@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://video-storyteller/storyboard.schema.json",
+  "title": "Storyboard",
+  "description": "Kịch bản video dạng storyboard — Claude tự viết, pipeline videopipe đọc.",
+  "type": "object",
+  "required": ["title", "character_sheet_prompt", "shots"],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Tiêu đề video — dùng cho title card đầu video.",
+      "minLength": 1
+    },
+    "style_anchor": {
+      "type": "string",
+      "description": "Ghi đè style anchor mặc định của preset (tùy chọn). Để trống = dùng StylePreset.image_style_anchor."
+    },
+    "character_sheet_prompt": {
+      "type": "string",
+      "description": "Prompt mô tả nhân vật chính — dùng để gen style_sheet.png làm reference image nhất quán cho mọi shot.",
+      "minLength": 1
+    },
+    "shots": {
+      "type": "array",
+      "description": "Danh sách shot theo thứ tự. Mỗi shot = 1 đoạn narration + 1+ ảnh.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "narration", "image_prompt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID shot (0-indexed, liên tục). Pipeline reindex lại 0..n-1 khi load.",
+            "minimum": 0
+          },
+          "narration": {
+            "type": "string",
+            "description": "Lời kể tiếng Anh (1-2 câu, ≤25 giây TTS). Giọng chủ động, không bị động.",
+            "minLength": 1
+          },
+          "image_prompt": {
+            "type": "string",
+            "description": "Mô tả cảnh hình ảnh — positive-only, không liệt kê 'avoid/no/without'. Style anchor sẽ kiểm soát phong cách.",
+            "minLength": 1
+          },
+          "images": {
+            "type": "integer",
+            "description": "Số ảnh cho shot này. >1 → đổi ảnh giữa shot tạo nhịp (dùng cho đoạn cao trào). Mặc định: 1.",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      }
+    }
+  }
+}

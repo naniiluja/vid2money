@@ -1,0 +1,4 @@
+# videopipe dependencies
+# (bổ sung dần theo từng task)
+
+edge-tts>=6.1.0   # Task 002 — TTS tiếng Anh + WordBoundary cho SRF
