@@ -2,7 +2,10 @@
   "name": "video-storyteller",
   "version": "0.1.0",
   "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh (TTS + ảnh + ffmpeg). Hỗ trợ 2 backend ảnh: Codex CLI (keyless) và Gemini qua anti2api.",
-  "author": "naniiluja",
-  "repository": "naniiluja/vid2money",
+  "author": {
+    "name": "naniiluja",
+    "url": "https://github.com/naniiluja"
+  },
+  "repository": "https://github.com/naniiluja/vid2money",
   "license": "MIT"
 }
