@@ -10,6 +10,7 @@ import importlib
 import importlib.util
 import sys
 import types
+import urllib.error
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -172,3 +173,32 @@ class TestProbeEnvironment:
             if "cảnh báo codex/windows" in w.lower() or "CẢNH BÁO CODEX/WINDOWS" in w
         ]
         assert codex_windows_warnings == []
+
+
+class TestProbeAnti2api:
+    """Kiểm tra _probe_anti2api() — server sống/chết qua urllib.
+
+    REGRESSION GUARD (bug 2026-06-16): server trả HTTP 404/401 (không có route
+    root, hoặc đòi key) NGHĨA LÀ SỐNG — không được coi mọi exception là chết.
+    Chỉ URLError (connection refused/timeout) mới là server chết.
+    """
+
+    def test_http_error_means_alive(self):
+        """HTTPError (401/404) = server PHẢN HỒI = sống → True."""
+        err = urllib.error.HTTPError(
+            url="http://localhost:8046/v1/models",
+            code=401, msg="Invalid API Key", hdrs=None, fp=None,
+        )
+        with patch("urllib.request.urlopen", side_effect=err):
+            assert check_env._probe_anti2api("http://localhost:8046") is True
+
+    def test_url_error_means_dead(self):
+        """URLError (connection refused) = server CHẾT → False."""
+        err = urllib.error.URLError("Connection refused")
+        with patch("urllib.request.urlopen", side_effect=err):
+            assert check_env._probe_anti2api("http://localhost:8046") is False
+
+    def test_ok_response_means_alive(self):
+        """Phản hồi 200 bình thường → True."""
+        with patch("urllib.request.urlopen", return_value=MagicMock()):
+            assert check_env._probe_anti2api("http://localhost:8046") is True

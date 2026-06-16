@@ -27,22 +27,25 @@ _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _probe_anti2api(base_url: str, timeout_s: float = 2.5) -> bool:
-    """Thử kết nối tới anti2api server, trả True nếu phản hồi trong timeout.
+    """Thử kết nối tới anti2api server, trả True nếu server PHẢN HỒI (sống).
 
     Dùng urllib thuần — không thêm dependency ngoài. KHÔNG in/log API key.
-    Probe bằng GET root (HEAD có thể bị server từ chối).
+
+    ROOT CAUSE (fix 2026-06-16): probe root URL trả HTTP 404 vì server KHÔNG có
+    route ở "/" — nhưng 404 NGHĨA LÀ SERVER SỐNG (chỉ thiếu route đó). Phải bắt
+    HTTPError RIÊNG (4xx/5xx = server đang phản hồi = sống), chỉ URLError
+    (connection refused / DNS / timeout) mới là server CHẾT. Probe endpoint
+    `/v1/models` cho khớp ngữ cảnh OpenAI-compat (server đòi key → 401, vẫn là sống).
     """
+    url = base_url.rstrip("/") + "/v1/models"
     try:
-        req = urllib.request.Request(base_url.rstrip("/"), method="HEAD")
-        with urllib.request.urlopen(req, timeout=timeout_s):
-            return True
+        urllib.request.urlopen(url, timeout=timeout_s)
+        return True
+    except urllib.error.HTTPError:
+        # Server trả mã lỗi HTTP (401 Invalid Key, 404...) → server SỐNG.
+        return True
     except Exception:
-        pass
-    # Thử GET nếu HEAD thất bại (một số server từ chối HEAD).
-    try:
-        with urllib.request.urlopen(base_url.rstrip("/"), timeout=timeout_s):
-            return True
-    except Exception:
+        # URLError (connection refused, timeout, DNS) → server CHẾT.
         return False
 
 
