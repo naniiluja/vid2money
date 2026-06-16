@@ -7,7 +7,7 @@ Plugin tự động biến một **chủ đề bất kỳ** thành video giải 
 
 Output: `<thư_mục_dự_án>/video-out/work/<run-id>/final.mp4` — video 1080p h264/yuv420p, intro/outro fade, phụ đề burn-in, nhạc nền lofi.
 
-Repo: `naniiluja/vid2money` (private). Cài 1 lần, dùng được ở **bất kỳ** project Claude Code nào.
+Repo: `naniiluja/vid2money` (public). Cài 1 lần, dùng được ở **bất kỳ** project Claude Code nào.
 
 ---
 
@@ -43,10 +43,10 @@ Cài 1 lần — sau đó dùng được ở mọi project.
 **Cách A — từ GitHub (khuyên dùng):**
 
 ```
-/plugin marketplace add https://github.com/naniiluja/vid2money.git
+/plugin marketplace add naniiluja/vid2money
 ```
 
-> ⚠️ Repo là **private** + Claude Code clone qua git. Dùng **URL HTTPS đầy đủ** (`.git`) như trên để git xác thực qua credential HTTPS đã lưu (vd qua `gh auth`). KHÔNG dùng dạng rút gọn `naniiluja/vid2money` — nó mặc định thử SSH (`git@github.com`) và sẽ lỗi `Permission denied (publickey)` nếu chưa cấu hình SSH key.
+> Repo là **public** nên dạng rút gọn `owner/repo` ở trên dùng được ngay. Nếu môi trường git của bạn ưu tiên SSH và báo `Permission denied (publickey)`, dùng URL HTTPS đầy đủ thay thế: `/plugin marketplace add https://github.com/naniiluja/vid2money.git`.
 
 **Cách B — từ thư mục local (dành cho dev/sửa plugin):**
 
