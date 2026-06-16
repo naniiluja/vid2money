@@ -7,10 +7,7 @@
   "plugins": [
     {
       "name": "video-storyteller",
-      "source": {
-        "type": "local",
-        "path": "./"
-      },
+      "source": "./",
       "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh từ storyboard JSON. TTS bằng edge-tts, ảnh qua Codex hoặc Gemini (anti2api), ghép video bằng ffmpeg."
     }
   ]
