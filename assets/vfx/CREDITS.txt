@@ -1,0 +1,21 @@
+VFX Sticker Assets — CREDITS
+============================
+
+Nguồn: tự sinh (self-generated) bằng Pillow 11.1.0
+Ngày sinh: 2026-06-17
+Tác giả: vid2money project
+
+Các file:
+  sticker_pow.png   — sticker "POW!" nền vàng, doodle marker style, alpha channel
+  sticker_wow.png   — sticker "WOW!" nền xanh, doodle marker style, alpha channel
+  sticker_bang.png  — sticker "!" nền đỏ, doodle marker style, alpha channel
+  sticker_star.png  — sticker "*" nền xanh lá, doodle marker style, alpha channel
+  sticker_hmm.png   — sticker "?" nền tím nhạt, doodle marker style, alpha channel
+
+License: tự sinh — không ràng buộc attribution.
+
+---
+Thêm sticker từ Pixabay (nếu muốn):
+  https://pixabay.com/images/search/sticker%20doodle/
+  Lọc: Free > Transparent (PNG). Tải về và đặt vào thư mục này.
+  Pixabay License không bắt buộc attribution nhưng ghi tự nguyện là thực hành tốt.

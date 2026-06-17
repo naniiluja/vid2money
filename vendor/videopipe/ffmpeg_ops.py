@@ -164,19 +164,30 @@ def _finalize(tmp: Path, out: Path) -> None:
 
 
 def make_segment(
-    image: Path, audio_dur: float, out_seg: Path, fps: int, width: int, height: int
+    image: Path,
+    audio_dur: float,
+    out_seg: Path,
+    fps: int,
+    width: int,
+    height: int,
+    vfx_annotations: list[dict] | None = None,
+    vfx_enabled: bool = False,
 ) -> Path:
     """Tạo 1 video segment từ ảnh tĩnh với Ken Burns, thời lượng = audio_dur.
 
     zoompan: zoom chậm 1.0 → 1.12 trong suốt segment. d = số frame = dur * fps.
     Scale ảnh trước để đủ độ phân giải cho zoompan crop mượt.
 
+    vfx_annotations: danh sách beat VFX của shot (từ storyboard.Shot.vfx).
+    vfx_enabled: True → nối filter VFX vào chuỗi -vf (duration-preserving).
+
     Pattern: ffmpeg ghi vào .partial trước; chỉ rename sang đích khi thành công.
     Nếu _run raise → xoá .partial trước khi re-raise → resume không thấy artifact cụt.
     """
+    from videopipe.vfx import build_vfx_filters  # import cục bộ tránh circular
+
     n_frames = max(1, round(audio_dur * fps))
-    # Phóng to nguồn 2x trước khi zoompan để pan/zoom không bị vỡ nét.
-    zoom_expr = f"min(zoom+0.0009,1.12)"
+    zoom_expr = "min(zoom+0.0009,1.12)"
     vf = (
         f"scale={width*2}:{height*2},"
         f"zoompan=z='{zoom_expr}':"
@@ -184,6 +195,13 @@ def make_segment(
         f"d={n_frames}:s={width}x{height}:fps={fps},"
         f"setsar=1"
     )
+
+    vfx_str = build_vfx_filters(
+        vfx_annotations or [], enabled=vfx_enabled, width=width, height=height
+    )
+    if vfx_str:
+        vf = f"{vf},{vfx_str}"
+
     out_seg.parent.mkdir(parents=True, exist_ok=True)
     tmp = _temp_path(out_seg)
     try:

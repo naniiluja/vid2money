@@ -26,7 +26,12 @@ Hai lớp tách bạch:
 ## Re-vendor (engine là bản sao điểm-thời-gian)
 `vendor/videopipe/` KHÔNG tự sync. Khi engine gốc đổi: (1) copy đè `*.py` + `script_schema.json`; (2) `python -m pytest tests/ -q` phải xanh; (3) bump version `plugin.json`; (4) commit `chore: re-vendor ...` ghi lý do; (5) chạy `/video-doctor` xác nhận `images.py` còn STDIN fix.
 
+## Known gaps (chưa implement đầy đủ)
+- **Nhạc cảm xúc (`music_mode=emotion`)**: engine + wiring đủ; gác integration desync `acrossfade` CHƯA verify thật (cần ffmpeg). Thư viện `assets/music/<mood>/` mới có 2/6 mood file thật.
+- **VFX `type=overlay` (dùng PNG `assets/vfx/`)**: CHƯA implement. Hiện `vfx type=emoji` là `drawtext` ký tự unicode, không ref PNG — PNG sticker là asset chờ overlay type tương lai.
+- Module mới: `music.py`=mood+timeline, `vfx.py`=filter VFX duration-preserving.
+
 ## Verifiable rules
-- Mỗi module một trách nhiệm: `tts.py`=giọng+SRT, `images.py`=ảnh, `ffmpeg_ops.py`=ghép, `config.py`=path+tham số, `storyboard.py`=load JSON, `pipeline.py`=điều phối.
+- Mỗi module một trách nhiệm: `tts.py`=giọng+SRT, `images.py`=ảnh, `ffmpeg_ops.py`=ghép, `config.py`=path+tham số, `storyboard.py`=load JSON, `pipeline.py`=điều phối, `music.py`=mood, `vfx.py`=hiệu ứng.
 - Không circular import giữa các lớp/module.
 - KHÔNG set env videopipe SAU khi đã import nó (lazy read chỉ cứu được nếu env có lúc property được gọi).

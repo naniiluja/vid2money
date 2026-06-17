@@ -62,6 +62,40 @@
               "playful",
               "triumphant"
             ]
+          },
+          "vfx": {
+            "type": "array",
+            "description": "Danh sách beat VFX hài tiết chế cho shot này. Tùy chọn; bỏ trống = không có VFX. Tối đa 3 beat/shot (rule-of-three). Chỉ có hiệu lực khi pipeline chạy với --vfx.",
+            "maxItems": 3,
+            "default": [],
+            "items": {
+              "type": "object",
+              "required": ["type", "at"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Loại effect: pop (drawtext to-nhỏ), punch (zoompan nhanh d=1), shake (crop sin), emoji (drawtext ký tự).",
+                  "enum": ["pop", "punch", "shake", "emoji"]
+                },
+                "at": {
+                  "type": "number",
+                  "description": "Thời điểm bắt đầu beat trong segment (giây, tính từ đầu shot).",
+                  "minimum": 0
+                },
+                "duration": {
+                  "type": "number",
+                  "description": "Thời lượng effect (giây). Mặc định 0.4s. Nên ≤0.5s để không ngắt nhịp xem.",
+                  "minimum": 0.1,
+                  "maximum": 1.0,
+                  "default": 0.4
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Nội dung hiển thị (dùng cho pop và emoji). Giữ ngắn: 1-3 từ hoặc 1 emoji."
+                }
+              }
+            }
           }
         }
       }

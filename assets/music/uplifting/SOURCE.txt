@@ -1,0 +1,20 @@
+BLOCKER: Pixabay CDN trả HTTP 403 khi tải tự động (yêu cầu session cookie đăng nhập).
+
+Để nạp nhạc cho mood "uplifting", hãy tải thủ công từ Pixabay và đặt file .mp3 vào thư mục này.
+
+Gợi ý tìm kiếm Pixabay (không bắt buộc attribution):
+  https://pixabay.com/music/search/uplifting/
+  https://pixabay.com/music/search/hopeful%20inspiring/
+  https://pixabay.com/music/search/positive%20background/
+
+Tiêu chí file:
+  - Độ dài: 30–90 giây (có thể loop)
+  - Dung lượng: < 3 MB
+  - License: Pixabay Content License (miễn phí, không bắt buộc ghi công)
+
+Cách thực hiện:
+  1. Truy cập một trong các link trên, nghe thử track phù hợp
+  2. Nhấn Download để tải .mp3
+  3. Đặt file vào thư mục này: assets/music/uplifting/
+  4. Thêm entry vào assets/music/CREDITS.txt (xem format có sẵn)
+  5. Xóa file SOURCE.txt này sau khi đã có .mp3

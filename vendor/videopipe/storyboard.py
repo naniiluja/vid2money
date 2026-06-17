@@ -37,6 +37,7 @@ class Shot:
     image_prompt: str
     images: int = 1
     mood: str | None = None
+    vfx: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -55,6 +56,7 @@ class Storyboard:
                 image_prompt=s["image_prompt"],
                 images=int(s.get("images", 1)),
                 mood=s.get("mood") or None,
+                vfx=list(s.get("vfx", [])),
             )
             for idx, s in enumerate(data["shots"])
         ]

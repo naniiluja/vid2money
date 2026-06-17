@@ -1,1 +1,23 @@
 Inspired by Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0
+
+=== Pixabay Music Library (Pixabay Content License) ===
+Nguồn: https://pixabay.com/music/
+License: Pixabay Content License — miễn phí sử dụng kể cả thương mại, không bắt buộc ghi công.
+Xem chi tiết: https://pixabay.com/service/license-summary/
+
+Track đã nạp:
+  playful/playful_quirky_fun.mp3
+    Nguồn: https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3
+    Mood: playful
+    License: Pixabay Content License
+
+  somber/somber_melancholy.mp3
+    Nguồn: https://cdn.pixabay.com/audio/2022/11/22/audio_febc508520.mp3
+    Mood: somber
+    License: Pixabay Content License
+
+Track chờ nạp thủ công (xem SOURCE.txt trong từng thư mục):
+  calm/         — xem calm/SOURCE.txt
+  uplifting/    — xem uplifting/SOURCE.txt
+  tense/        — xem tense/SOURCE.txt
+  triumphant/   — xem triumphant/SOURCE.txt

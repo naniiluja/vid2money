@@ -422,16 +422,16 @@ def _mix_emotion_music(
 
     timeline = build_music_timeline(board.shots, shot_durs)
 
-    # Map mood → file nhạc trong library (tên file = <mood>.mp3).
+    # Map mood → file nhạc trong library (layout assets/music/<mood>/*.mp3).
     mood_files: dict[str, Path] = {}
     missing: list[str] = []
     for seg in timeline:
         mood = seg["mood"]
         if mood in mood_files:
             continue
-        candidate = music_lib / f"{mood}.mp3"
-        if candidate.exists():
-            mood_files[mood] = candidate
+        candidates = sorted((music_lib / mood).glob("*.mp3"))
+        if candidates:
+            mood_files[mood] = candidates[0]
         else:
             missing.append(mood)
 

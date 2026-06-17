@@ -66,6 +66,7 @@ Quy tắc viết storyboard:
 - `image_prompt` phải **positive-only** — KHÔNG liệt kê "Avoid: ...", để style anchor kiểm soát. (Negative prompt khiến gpt-image-2 vẽ đúng các token đó.)
 - `character_sheet_prompt` mô tả nhân vật chính đủ rõ để sinh reference image nhất quán.
 - Ngân sách lời và số shot: nếu có `--target-minutes N`, ngân sách từ = `N × wpm × 0.88` (wpm dẫn xuất từ rate TTS, mặc định +5% → ≈157.5 wpm). Số shot ≈ `(N × 60) / 18–22s` mỗi shot. Nếu không có `--target-minutes`, giữ 8–14 shot (video ~2–4 phút). Theo cấu trúc Pixar story spine trong `references/storyboard-craft.md`.
+- **VFX hài TIẾT CHẾ** (chỉ khi user bật `--vfx`): gắn beat VFX vào câu chốt, đỉnh hài hước, hoặc điểm nhấn cảm xúc — tối đa ≤2–3 beat/phút toàn video (rule-of-three: dùng nhiều hơn = mất tác dụng). Mỗi shot ≤3 beat. Thời lượng effect 0.3–0.5s. KHÔNG đặt VFX ở mọi shot — để khoảng thở để beat có trọng lượng. Ví dụ tốt: `{"type": "pop", "text": "Wait—", "at": 3.2, "duration": 0.4}` ngay trước câu twist. Xem `references/storyboard.schema.json` field `vfx`.
 - **Gán `mood` cho mỗi shot** (tùy chọn nhưng nên có khi bật `music_mode="emotion"`):
   - `calm` — đoạn dẫn nhập, giải thích bình thản, bối cảnh yên tĩnh.
   - `uplifting` — đoạn hi vọng, phục hồi, tương lai tươi sáng.
@@ -83,12 +84,22 @@ Lưu storyboard vào `<cwd>/video-out/<slug-chủ-đề>.json` (cùng nơi với
 
 Backend ảnh = codex (mặc định, duy nhất). Không cần chọn backend.
 
-Xác định đường dẫn nhạc nền (tùy chọn):
+**Chế độ nhạc khuyến nghị — emotion (khi đã có music library):**
+
+Thư mục nhạc theo 6 mood: `${CLAUDE_PLUGIN_ROOT}/assets/music/`
+Các mood hiện có: `calm/`, `uplifting/`, `tense/`, `somber/`, `playful/`, `triumphant/`
+(Mood chưa có .mp3 có SOURCE.txt hướng dẫn nạp thủ công — xem `assets/music/CREDITS.txt`)
+
+Gọi pipeline với emotion mode (khuyến nghị khi storyboard đã gán `mood` cho từng shot):
 ```
-${CLAUDE_PLUGIN_ROOT}/assets/music/lofi_bed.mp3
+python "${CLAUDE_PLUGIN_ROOT}/skills/video-storyteller/scripts/run_pipeline.py" \
+  --storyboard "<cwd>/video-out/<slug>.json" \
+  --style <style> \
+  --music-library "${CLAUDE_PLUGIN_ROOT}/assets/music" \
+  --music-mode emotion
 ```
 
-Gọi pipeline (có thể thêm `--run-id <id>` để resume nếu bị dở):
+Fallback — dùng nhạc nền đơn khi chưa có đủ library:
 ```
 python "${CLAUDE_PLUGIN_ROOT}/skills/video-storyteller/scripts/run_pipeline.py" \
   --storyboard "<cwd>/video-out/<slug>.json" \

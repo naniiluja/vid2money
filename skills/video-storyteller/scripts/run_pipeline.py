@@ -108,6 +108,12 @@ def _build_config(args: argparse.Namespace, board_title: str):
         config_kwargs["outro_text"] = args.outro_text
     if getattr(args, "target_minutes", None) is not None:
         config_kwargs["target_minutes"] = args.target_minutes
+    if getattr(args, "vfx", False):
+        config_kwargs["vfx_enabled"] = True
+    if getattr(args, "music_library", None):
+        config_kwargs["music_library"] = Path(args.music_library)
+    if getattr(args, "music_mode", None):
+        config_kwargs["music_mode"] = args.music_mode
 
     return PipelineConfig(**config_kwargs)
 
@@ -144,6 +150,20 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--target-minutes", type=float, default=None,
         help="Thời lượng mục tiêu (phút). Pipeline cảnh báo nếu thực tế lệch >10%%.",
+    )
+    parser.add_argument(
+        "--vfx",
+        action="store_true",
+        default=False,
+        help="Bật lớp VFX hài tiết chế (drawtext pop, zoompan punch, crop shake). Tắt mặc định.",
+    )
+    parser.add_argument(
+        "--music-library", default="",
+        help="Thư mục thư viện nhạc theo mood (assets/music/<mood>/*.mp3).",
+    )
+    parser.add_argument(
+        "--music-mode", choices=["static", "emotion"], default="static",
+        help="static = 1 bed cố định; emotion = đổi nhạc theo mood mỗi đoạn.",
     )
     return parser.parse_args(argv)
 

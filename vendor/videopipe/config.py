@@ -165,6 +165,8 @@ class PipelineConfig:
     outro_seconds: float = 2.5
     show_title_card: bool = True
     outro_text: str = ""  # rỗng = chỉ nền + fade-out, không vẽ chữ
+    # VFX hài tiết chế — tắt mặc định; bật qua --vfx (cli/wrapper).
+    vfx_enabled: bool = False
 
     def __post_init__(self) -> None:
         if not self.run_id:
