@@ -8,7 +8,7 @@
     {
       "name": "video-storyteller",
       "source": "./",
-      "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh từ storyboard JSON. TTS bằng edge-tts, ảnh qua Codex hoặc Gemini (anti2api), ghép video bằng ffmpeg."
+      "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh từ storyboard JSON. TTS bằng edge-tts, ảnh qua Codex CLI, ghép video bằng ffmpeg."
     }
   ]
 }

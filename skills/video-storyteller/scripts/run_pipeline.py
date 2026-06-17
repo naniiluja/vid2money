@@ -133,8 +133,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Mức giảm âm nhạc nền so với giọng đọc (dB, mặc định 16.0)."
     )
     parser.add_argument(
-        "--backend", choices=["codex", "gemini"], default="codex",
-        help="Backend sinh ảnh: codex (mặc định) hoặc gemini (anti2api)."
+        "--backend", choices=["codex"], default="codex",
+        help="Backend sinh ảnh: codex (mặc định, duy nhất ở lớp plugin)."
     )
     parser.add_argument(
         "--outro-text", default="", help="Chữ hiển thị trên end card (tùy chọn)."

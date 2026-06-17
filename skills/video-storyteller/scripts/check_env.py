@@ -3,7 +3,7 @@
 Chạy: python check_env.py --json
 Output: JSON ra stdout với các field:
   - tools: dict {tên: bool} (có/không)
-  - recommended_backend: "gemini" hoặc "codex"
+  - recommended_backend: "codex" (backend ảnh duy nhất của plugin)
   - blockers: list lý do pipeline chưa chạy được
   - warnings: list cảnh báo cần chú ý nhưng không block
 """
@@ -17,36 +17,11 @@ import os
 import platform
 import shutil
 import sys
-import urllib.request
-import urllib.error
 from pathlib import Path
 
 # Thư mục gốc plugin = cha của skills/ (3 cấp lên từ script này)
 # skills/video-storyteller/scripts/check_env.py → plugin root
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-
-def _probe_anti2api(base_url: str, timeout_s: float = 2.5) -> bool:
-    """Thử kết nối tới anti2api server, trả True nếu server PHẢN HỒI (sống).
-
-    Dùng urllib thuần — không thêm dependency ngoài. KHÔNG in/log API key.
-
-    ROOT CAUSE (fix 2026-06-16): probe root URL trả HTTP 404 vì server KHÔNG có
-    route ở "/" — nhưng 404 NGHĨA LÀ SERVER SỐNG (chỉ thiếu route đó). Phải bắt
-    HTTPError RIÊNG (4xx/5xx = server đang phản hồi = sống), chỉ URLError
-    (connection refused / DNS / timeout) mới là server CHẾT. Probe endpoint
-    `/v1/models` cho khớp ngữ cảnh OpenAI-compat (server đòi key → 401, vẫn là sống).
-    """
-    url = base_url.rstrip("/") + "/v1/models"
-    try:
-        urllib.request.urlopen(url, timeout=timeout_s)
-        return True
-    except urllib.error.HTTPError:
-        # Server trả mã lỗi HTTP (401 Invalid Key, 404...) → server SỐNG.
-        return True
-    except Exception:
-        # URLError (connection refused, timeout, DNS) → server CHẾT.
-        return False
 
 
 def _check_vendored_stdin_fix() -> bool:
@@ -73,7 +48,8 @@ def _check_vendored_stdin_fix() -> bool:
 def probe_environment() -> dict:
     """Kiểm tra toàn bộ môi trường và trả dict kết quả.
 
-    Hàm thuần (không side-effect ngoài network probe) — dễ test với mock.
+    Hàm thuần (không side-effect ngoài filesystem read) — dễ test với mock.
+    Backend ảnh duy nhất của plugin là Codex — không còn anti2api/Gemini.
     """
     # --- Probe từng công cụ ---
     ffmpeg_path = shutil.which("ffmpeg")
@@ -88,18 +64,8 @@ def probe_environment() -> dict:
         "edge-tts": edge_tts_spec is not None,
     }
 
-    # --- Probe anti2api ---
-    anti2api_base = os.environ.get("ANTI2API_BASE_URL", "http://localhost:8046")
-    anti2api_key_set = bool(os.environ.get("ANTI2API_KEY", "").strip())
-    anti2api_alive = _probe_anti2api(anti2api_base)
-    tools["anti2api"] = anti2api_alive
-
-    # --- Tính recommended_backend ---
-    # Dùng gemini nếu server sống VÀ có key; ngược lại dùng codex.
-    if anti2api_alive and anti2api_key_set:
-        recommended_backend = "gemini"
-    else:
-        recommended_backend = "codex"
+    # --- Backend duy nhất là codex ---
+    recommended_backend = "codex"
 
     # --- Tính blockers (điều kiện bắt buộc để pipeline chạy) ---
     blockers: list[str] = []
@@ -122,13 +88,13 @@ def probe_environment() -> dict:
     warnings: list[str] = []
 
     # CODEX FALLBACK GUARD (premortem H): cảnh báo rủi ro context-bleed trên Windows.
-    if recommended_backend == "codex" and platform.system() == "Windows":
+    if platform.system() == "Windows":
         warnings.append(
             "CẢNH BÁO CODEX/WINDOWS: codex.CMD trên Windows từng cắt xén prompt "
             "positional arg dài → mất style anchor → context-bleed (ảnh ra sai style "
             "photorealistic thay vì người que). Bản vendored đã fix bằng STDIN ('-' "
-            "positional + input= stdin). KHUYẾN NGHỊ: bật anti2api/Gemini backend để "
-            "portable và chất lượng ảnh tốt hơn (set ANTI2API_BASE_URL + ANTI2API_KEY)."
+            "positional + input= stdin) — an toàn để dùng. Nếu vẫn gặp ảnh sai style: "
+            "xóa ảnh đó rồi chạy lại pipeline với cùng run-id để gen lại."
         )
         # Kiểm tra vendor images.py thực sự có fix STDIN chưa.
         if not _check_vendored_stdin_fix():
@@ -137,18 +103,6 @@ def probe_environment() -> dict:
                 "— không tìm thấy dấu hiệu 'input=stdin_data' + '-' positional trong nhánh codex. "
                 "Re-vendor từ D:/projects/youtube/videopipe/images.py (bản sau 2026-06-16)."
             )
-
-    # Thêm info anti2api nếu server chết hoặc thiếu key (nhưng không phải blocker).
-    if not anti2api_alive:
-        warnings.append(
-            f"anti2api server không phản hồi tại {anti2api_base} — "
-            "nếu muốn dùng backend Gemini, chạy: cd D:\\projects\\anti2api && npm start"
-        )
-    elif not anti2api_key_set:
-        warnings.append(
-            "ANTI2API_KEY chưa được set trong env — server sống nhưng request sẽ bị từ chối. "
-            "Chạy: export ANTI2API_KEY=<key> (lấy từ D:\\projects\\anti2api\\.env)."
-        )
 
     return {
         "tools": tools,

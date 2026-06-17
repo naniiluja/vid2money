@@ -171,13 +171,6 @@ class TestBuildConfig:
         cfg = rp._build_config(args, board_title="Test Topic")
         assert cfg.image_backend == "codex"
 
-    def test_backend_gemini(self):
-        """image_backend phải là 'gemini' khi args.backend='gemini'."""
-        rp = _get_run_pipeline()
-        args = self._make_args(backend="gemini", run_id="test-run-456")
-        cfg = rp._build_config(args, board_title="Test Topic Gemini")
-        assert cfg.image_backend == "gemini"
-
     def test_style_stick_figure(self):
         """style preset phải là stick-figure khi args.style='stick-figure'."""
         rp = _get_run_pipeline()

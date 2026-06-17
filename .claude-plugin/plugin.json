@@ -1,7 +1,7 @@
 {
   "name": "video-storyteller",
   "version": "0.1.0",
-  "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh (TTS + ảnh + ffmpeg). Hỗ trợ 2 backend ảnh: Codex CLI (keyless) và Gemini qua anti2api.",
+  "description": "Pipeline tự động tạo video kể chuyện / giải thích tiếng Anh (TTS + ảnh + ffmpeg). Gen ảnh qua Codex CLI (keyless, login ChatGPT Plus).",
   "author": {
     "name": "naniiluja",
     "url": "https://github.com/naniiluja"
