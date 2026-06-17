@@ -469,6 +469,121 @@ def mix_background_music(
     return out_video
 
 
+def mix_emotion_tracks(
+    timeline: list[dict],
+    mood_files: dict[str, "Path"],
+    out_audio: Path,
+    crossfade_d: float = 2.0,
+) -> Path:
+    """Nối nhiều track nhạc theo music timeline với acrossfade giữa các segment.
+
+    Mỗi segment trong timeline được cắt (atrim) đúng thời lượng từ track nhạc tương ứng
+    rồi nối lại bằng acrossfade(d=crossfade_d, c1=exp, c2=exp).
+
+    Công thức duration output:
+      Σ(dur_segment) − (n_joins × crossfade_d)
+    với n_joins = len(timeline) − 1.
+
+    Tham số:
+        timeline: list[dict] từ build_music_timeline, mỗi phần tử có mood + duration.
+        mood_files: ánh xạ mood → Path file nhạc nguồn.
+        out_audio: đường dẫn file output mp3.
+        crossfade_d: thời gian crossfade (giây, mặc định 2.0).
+
+    Fallback: nếu mood không có trong mood_files, dùng mood đầu tiên có sẵn.
+    Nếu timeline rỗng → raise ValueError.
+    """
+    from pathlib import Path as _Path
+
+    if not timeline:
+        raise ValueError("timeline rỗng — không có segment nhạc để mix")
+
+    available_moods = list(mood_files.keys())
+    if not available_moods:
+        raise ValueError("mood_files rỗng — không có track nhạc nào")
+
+    out_audio.parent.mkdir(parents=True, exist_ok=True)
+
+    # Trường hợp chỉ 1 segment: atrim rồi xuất thẳng, không cần acrossfade.
+    if len(timeline) == 1:
+        seg = timeline[0]
+        mood = seg["mood"]
+        src = mood_files.get(mood) or mood_files[available_moods[0]]
+        dur = seg["duration"]
+        tmp = _temp_path(out_audio)
+        try:
+            _run([
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", str(src),
+                "-t", f"{dur:.3f}",
+                "-af", "afade=t=out:st={:.3f}:d={:.3f}".format(
+                    max(0.0, dur - crossfade_d), crossfade_d
+                ),
+                "-c:a", "libmp3lame", "-b:a", "128k",
+                str(tmp),
+            ])
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
+        _finalize(tmp, out_audio)
+        log.info("Emotion mix (1 segment): %s (%.2fs)", out_audio.name, dur)
+        return out_audio
+
+    # Nhiều segment: dựng filter_complex với acrossfade nối tiếp.
+    # Mỗi segment: [N:a]atrim=duration=DUR,asetpts=expr → [segN]
+    # Nối: [seg0][seg1]acrossfade=d=D:c1=exp:c2=exp[ac01];
+    #        [ac01][seg2]acrossfade=d=D:c1=exp:c2=exp[ac012]; ...
+    cmd: list[str] = ["ffmpeg", "-y"]
+
+    for i, seg in enumerate(timeline):
+        mood = seg["mood"]
+        src = mood_files.get(mood) or mood_files[available_moods[0]]
+        cmd += ["-stream_loop", "-1", "-i", str(src)]
+
+    filter_parts: list[str] = []
+    for i, seg in enumerate(timeline):
+        dur = seg["duration"]
+        # atrim bảo đảm độ dài chính xác; asetpts reset timestamps sau trim.
+        filter_parts.append(
+            f"[{i}:a]atrim=duration={dur:.3f},asetpts=PTS-STARTPTS[s{i}]"
+        )
+
+    # Nối acrossfade từng cặp: [s0][s1] → [ac1], [ac1][s2] → [ac2], ...
+    n = len(timeline)
+    # Cặp đầu tiên
+    filter_parts.append(
+        f"[s0][s1]acrossfade=d={crossfade_d:.3f}:c1=exp:c2=exp[ac1]"
+    )
+    for i in range(2, n):
+        prev_label = f"ac{i - 1}"
+        curr_label = f"ac{i}"
+        filter_parts.append(
+            f"[{prev_label}][s{i}]acrossfade=d={crossfade_d:.3f}:c1=exp:c2=exp[{curr_label}]"
+        )
+
+    final_label = f"ac{n - 1}"
+    filter_complex = ";".join(filter_parts)
+
+    tmp = _temp_path(out_audio)
+    cmd += [
+        "-filter_complex", filter_complex,
+        "-map", f"[{final_label}]",
+        "-c:a", "libmp3lame", "-b:a", "128k",
+        str(tmp),
+    ]
+    try:
+        _run(cmd)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+    _finalize(tmp, out_audio)
+    log.info(
+        "Emotion mix (%d segment, %d crossfade): %s",
+        n, n - 1, out_audio.name,
+    )
+    return out_audio
+
+
 def assemble(
     segments: list[Path],
     full_audio: Path,

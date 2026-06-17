@@ -106,6 +106,8 @@ def _build_config(args: argparse.Namespace, board_title: str):
         config_kwargs["music_duck_db"] = args.music_duck_db
     if args.outro_text:
         config_kwargs["outro_text"] = args.outro_text
+    if getattr(args, "target_minutes", None) is not None:
+        config_kwargs["target_minutes"] = args.target_minutes
 
     return PipelineConfig(**config_kwargs)
 
@@ -138,6 +140,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--outro-text", default="", help="Chữ hiển thị trên end card (tùy chọn)."
+    )
+    parser.add_argument(
+        "--target-minutes", type=float, default=None,
+        help="Thời lượng mục tiêu (phút). Pipeline cảnh báo nếu thực tế lệch >10%%.",
     )
     return parser.parse_args(argv)
 

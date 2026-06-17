@@ -49,7 +49,7 @@ def probe_environment() -> dict:
     """Kiểm tra toàn bộ môi trường và trả dict kết quả.
 
     Hàm thuần (không side-effect ngoài filesystem read) — dễ test với mock.
-    Backend ảnh duy nhất của plugin là Codex — không còn anti2api/Gemini.
+    Backend ảnh duy nhất của plugin là Codex.
     """
     # --- Probe từng công cụ ---
     ffmpeg_path = shutil.which("ffmpeg")

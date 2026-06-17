@@ -81,8 +81,8 @@ def synthesize(
     text: str,
     out_mp3: Path,
     out_srt: Path,
-    voice: str = "en-US-GuyNeural",
-    rate: str = "-8%",
+    voice: str = "en-US-AndrewMultilingualNeural",
+    rate: str = "+5%",
 ) -> float:
     """Sinh mp3 + srt cho một đoạn text. Trả về thời lượng (giây) suy từ SRT.
 

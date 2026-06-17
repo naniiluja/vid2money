@@ -4,9 +4,29 @@
 
 ---
 
+## Nhịp nói và nhấn nhá (không SSML)
+
+**Rate mặc định `+5%` ≈ 157.5 wpm** — nhịp podcast tự nhiên, không lê thê.
+Ngân sách từ = `N × 157.5 × 0.88` (hàm `expected_words` dẫn xuất từ rate).
+
+**edge-tts KHÔNG nhận SSML** — `<emphasis>`, `<break>`, `<prosody>` bị strip hoàn toàn.
+Nhấn nhá bằng dấu câu và cách viết:
+
+- **Ngừng ngắn**: dấu phẩy `,` hoặc em-dash `—` (ngừng 1-2 beat).
+- **Ngừng dài/kịch tính**: dấu chấm lửng `...` (ngừng rõ hơn, dùng ở câu mở hoặc twist).
+- **Nhấn từ khoá**: CAPS — viết HOA toàn bộ từ quan trọng nhất trong câu (TIẾT CHẾ — tối đa 1-2 từ/shot, không viết hoa cả câu).
+- **Ví dụ tốt**: `"The person who tries to time the market — ALWAYS — ends up poorer."`
+- **Ví dụ kém**: `"THE PERSON WHO TRIES TO TIME THE MARKET ALWAYS ENDS UP POORER."` (viết hoa toàn câu = mất hiệu quả nhấn).
+
+---
+
 ## Cấu trúc Pixar Story Spine
 
-Khung xương sống bắt buộc cho mọi video (8-14 shot):
+Khung xương sống bắt buộc cho mọi video. Số shot và ngân sách lời phụ thuộc `--target-minutes`:
+- **Có `--target-minutes N`**: ngân sách từ = `N × wpm × 0.88` (wpm ≈ 157.5 với rate +5%). Số shot ≈ `(N × 60) / 18–22s` mỗi shot.
+- **Không có `--target-minutes`**: mặc định 8–14 shot (video ~2–4 phút).
+
+Cấu trúc 5 act:
 
 1. **Setup + câu hỏi gây tò mò** (shot 0-1): Mở bằng nghịch lý hoặc câu hỏi "ngược đời" khiến người xem không thể không muốn biết đáp án. Không mở bằng định nghĩa.
 2. **Escalation** (shot 2-4): Dẫn dắt vào vấn đề — tại sao nó khó, tại sao người ta thường giải quyết sai.

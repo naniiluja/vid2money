@@ -13,6 +13,43 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+BASE_WPM: float = 150.0
+
+
+def words_per_minute(rate: str) -> float:
+    """Dẫn xuất tốc độ lời thoại (wpm) từ rate TTS edge-tts.
+
+    rate định dạng "+5%", "-4%", "0%", "+0%" → float wpm.
+    Raise ValueError nếu format không hợp lệ.
+    """
+    cleaned = rate.strip()
+    m = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)%", cleaned)
+    if m is None:
+        raise ValueError(f"rate không hợp lệ: '{rate}'. Định dạng chuẩn: '+5%', '-4%', '0%'.")
+    pct = float(m.group(1))
+    return BASE_WPM * (1 + pct / 100)
+
+
+def expected_words(minutes: float, rate: str) -> int:
+    """Ngân sách từ cho một video dài `minutes` phút với rate TTS.
+
+    Công thức: round(minutes × wpm × 0.88).
+    Hệ số 0.88 dự phòng ngừng nghỉ tự nhiên + phần storyboard không phải narration.
+    """
+    wpm = words_per_minute(rate)
+    return round(minutes * wpm * 0.88)
+
+
+def is_duration_off(actual_s: float, target_s: float, tol: float = 0.10) -> bool:
+    """Trả True nếu actual_s lệch khỏi target_s vượt ngưỡng tol (mặc định 10%).
+
+    Dùng để cảnh báo sau assemble. Không raise — lệch target là warning, không lỗi.
+    """
+    if target_s <= 0:
+        return False
+    ratio = actual_s / target_s
+    return ratio < (1 - tol) or ratio > (1 + tol)
+
 # Thư mục gốc dự án = cha của package videopipe.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WORK_ROOT = PROJECT_ROOT / "work"
@@ -101,24 +138,27 @@ class PipelineConfig:
 
     topic: str
     run_id: str = ""
-    # Backend sinh ảnh: "codex" (mặc định, dùng Codex CLI image_gen) hoặc
-    # "gemini" (dùng anti2api gemini-3-pro-image). Đọc base URL và key từ env
-    # ANTI2API_BASE_URL và ANTI2API_KEY khi backend="gemini".
     image_backend: str = "codex"
-    # TTS: giọng tiếng Anh (edge-tts). rate âm = chậm hơn, rõ hơn.
-    # Andrew (giọng thế hệ mới, ấm, ngữ điệu phong phú) + -4% (giữ nhịp tự nhiên,
-    # không lê thê như -8%) — đã verify truyền cảm & nhịp tốt hơn Guy/-8% (video DCA).
+    # TTS: giọng tiếng Anh (edge-tts). rate dương = nhanh hơn.
+    # Andrew (giọng thế hệ mới, ấm, ngữ điệu phong phú) + +5% ≈ 157.5 wpm — ngân sách
+    # từ dẫn xuất qua words_per_minute(rate); nguồn: task-003-tts-pacing.md.
     voice: str = "en-US-AndrewMultilingualNeural"
-    tts_rate: str = "-4%"
+    tts_rate: str = "+5%"
     # Video.
     fps: int = 30
     width: int = 1920
     height: int = 1080
     style: StylePreset = field(default_factory=StylePreset)
+    # Ngân sách thời lượng (tùy chọn): N phút → pipeline cảnh báo nếu actual lệch >10%.
+    target_minutes: float | None = None
     # Nhạc nền (tùy chọn): đường dẫn file mp3 + mức giảm âm so với giọng (dB).
     # 16-18 dB là sweet spot (WCAG yêu cầu nền thấp hơn giọng >=20 dB là chuẩn an toàn).
     music_path: Path | None = None
     music_duck_db: float = 16.0
+    # Chế độ nhạc nền: "static" = 1 track cố định (hành vi cũ); "emotion" = đổi track theo mood.
+    # music_library: thư mục chứa track nhạc emotion (cần khi music_mode="emotion").
+    music_mode: str = "static"
+    music_library: Path | None = None
     # Intro/outro card — khoảng thở đầu/cuối video.
     # show_title_card=False → bỏ card nhưng giữ hành vi cũ (không có offset SRT).
     intro_seconds: float = 2.0
@@ -185,6 +225,12 @@ class PipelineConfig:
     def describe(self) -> str:
         """Mô tả config đã resolve (để in ra CLI)."""
         music_info = str(self.music_path) if self.music_path else "(không có)"
+        target_info = (
+            f"{self.target_minutes} phút "
+            f"(≈{expected_words(self.target_minutes, self.tts_rate)} từ)"
+            if self.target_minutes is not None
+            else "(không đặt)"
+        )
         return (
             f"PipelineConfig\n"
             f"  topic      : {self.topic}\n"
@@ -193,6 +239,7 @@ class PipelineConfig:
             f"  resolution : {self.resolution} @ {self.fps}fps\n"
             f"  style      : {self.style.name} [{self.style.use_case_slug}]\n"
             f"  music      : {music_info} (duck {self.music_duck_db} dB)\n"
+            f"  target     : {target_info}\n"
             f"  work_dir   : {self.work_dir}\n"
             f"  final      : {self.final_path}"
         )

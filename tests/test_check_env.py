@@ -61,7 +61,7 @@ class TestProbeEnvironment:
         platform_system: str = "Linux",
         stdin_fix_ok: bool = True,
     ) -> dict:
-        """Chạy probe_environment() với mock đầy đủ (không còn anti2api)."""
+        """Chạy probe_environment() với mock đầy đủ."""
         env: dict[str, str] = {}
         if env_overrides:
             env.update(env_overrides)
@@ -78,7 +78,7 @@ class TestProbeEnvironment:
         ):
             return check_env.probe_environment()
 
-    # CA 1: Đủ tool → recommended_backend="codex", không blocker, không key "anti2api"
+    # CA 1: Đủ tool → recommended_backend="codex", không blocker
     def test_all_tools_recommends_codex(self):
         result = self._run(
             which_available={"ffmpeg", "ffprobe", "codex"},
@@ -90,8 +90,6 @@ class TestProbeEnvironment:
         assert result["tools"]["ffmpeg"] is True
         assert result["tools"]["ffprobe"] is True
         assert result["tools"]["edge-tts"] is True
-        # Không còn key anti2api trong tools.
-        assert "anti2api" not in result["tools"]
 
     # CA 2: Thiếu ffmpeg → ffmpeg trong blockers
     def test_missing_ffmpeg_adds_blocker(self):
@@ -136,14 +134,12 @@ class TestProbeEnvironment:
         ]
         assert codex_windows_warnings == []
 
-    # CA 5: recommended_backend LUÔN = "codex" — không còn nhánh gemini
+    # CA 5: recommended_backend LUÔN = "codex"
     def test_recommended_backend_always_codex(self):
-        """Dù env nào, recommended_backend phải là 'codex' (backend gemini đã bỏ ở plugin)."""
+        """Dù env nào, recommended_backend phải là 'codex'."""
         result = self._run(
             which_available={"ffmpeg", "ffprobe", "codex"},
             specs_available={"edge_tts"},
             platform_system="Linux",
         )
         assert result["recommended_backend"] == "codex"
-        # Không được là "gemini".
-        assert result["recommended_backend"] != "gemini"

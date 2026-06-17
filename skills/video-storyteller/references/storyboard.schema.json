@@ -50,6 +50,18 @@
             "description": "Số ảnh cho shot này. >1 → đổi ảnh giữa shot tạo nhịp (dùng cho đoạn cao trào). Mặc định: 1.",
             "minimum": 1,
             "default": 1
+          },
+          "mood": {
+            "type": "string",
+            "description": "Mood cảm xúc của shot — dùng để chọn track nhạc nền tương ứng. Tùy chọn; nếu bỏ trống engine tự suy từ keyword narration.",
+            "enum": [
+              "calm",
+              "uplifting",
+              "tense",
+              "somber",
+              "playful",
+              "triumphant"
+            ]
           }
         }
       }

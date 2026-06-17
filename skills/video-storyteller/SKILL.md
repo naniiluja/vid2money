@@ -53,7 +53,8 @@ Schema bắt buộc (xem `references/storyboard.schema.json`):
       "id": 0,
       "narration": "1-2 câu lời kể tiếng Anh.",
       "image_prompt": "Mô tả 1 cảnh cụ thể, positive-only (không liệt kê tránh gì).",
-      "images": 1
+      "images": 1,
+      "mood": "calm"
     }
   ]
 }
@@ -64,7 +65,15 @@ Quy tắc viết storyboard:
 - `images=2` ở đoạn cao trào để đổi ảnh nhanh tạo nhịp; phần còn lại để 1.
 - `image_prompt` phải **positive-only** — KHÔNG liệt kê "Avoid: ...", để style anchor kiểm soát. (Negative prompt khiến gpt-image-2 vẽ đúng các token đó.)
 - `character_sheet_prompt` mô tả nhân vật chính đủ rõ để sinh reference image nhất quán.
-- Tổng: 8-14 shot (video 2-4 phút), theo cấu trúc Pixar story spine trong `references/storyboard-craft.md`.
+- Ngân sách lời và số shot: nếu có `--target-minutes N`, ngân sách từ = `N × wpm × 0.88` (wpm dẫn xuất từ rate TTS, mặc định +5% → ≈157.5 wpm). Số shot ≈ `(N × 60) / 18–22s` mỗi shot. Nếu không có `--target-minutes`, giữ 8–14 shot (video ~2–4 phút). Theo cấu trúc Pixar story spine trong `references/storyboard-craft.md`.
+- **Gán `mood` cho mỗi shot** (tùy chọn nhưng nên có khi bật `music_mode="emotion"`):
+  - `calm` — đoạn dẫn nhập, giải thích bình thản, bối cảnh yên tĩnh.
+  - `uplifting` — đoạn hi vọng, phục hồi, tương lai tươi sáng.
+  - `tense` — đoạn cao trào, khủng hoảng, nguy hiểm, xung đột.
+  - `somber` — đoạn buồn, mất mát, hậu quả nặng nề.
+  - `playful` — đoạn nhẹ nhàng, hài hước, ví dụ sinh động.
+  - `triumphant` — đoạn thắng lợi, thành công, kết thúc mạnh mẽ.
+  - Nếu bỏ field `mood`, engine tự suy từ keyword trong narration (kém chính xác hơn).
 
 Lưu storyboard vào `<cwd>/video-out/<slug-chủ-đề>.json` (cùng nơi với artifact video để dễ quản lý). Tạo thư mục `<cwd>/video-out/` nếu chưa có.
 
@@ -90,6 +99,8 @@ python "${CLAUDE_PLUGIN_ROOT}/skills/video-storyteller/scripts/run_pipeline.py" 
 Pipeline sẽ in path final.mp4 ra stdout khi hoàn tất.
 
 **Resume-friendly:** nếu pipeline bị dở (mất kết nối, timeout), thêm `--run-id <id-cũ>` để tiếp tục từ chỗ dở (artifact đã gen sẽ được skip).
+
+> **QUAN TRỌNG — ranh giới thay đổi rate:** nếu cấu hình TTS rate thay đổi (ví dụ: từ −4% lên +5%), các file `scene_*.mp3` trong work-dir cũ đã được tổng hợp ở rate cũ và KHÔNG còn hợp lệ. KHÔNG dùng `--run-id` cũ qua ranh giới này — resume sẽ skip audio cũ và giữ nguyên, dẫn đến video trộn nhịp cũ+mới. Khi đổi rate, luôn bắt đầu run mới (không truyền `--run-id`).
 
 ---
 

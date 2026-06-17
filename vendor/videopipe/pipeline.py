@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 
 from videopipe import ffmpeg_ops, images, research, script_gen, tts
-from videopipe.config import PipelineConfig
+from videopipe.config import PipelineConfig, is_duration_off
 from videopipe.storyboard import Storyboard
 
 log = logging.getLogger("videopipe")
@@ -187,6 +187,20 @@ def run(
         **assemble_kwargs,
     )
     log.info("[6] assemble  — %s", config.final_path)
+
+    if config.target_minutes is not None:
+        actual_s = ffmpeg_ops.probe_duration(config.final_path)
+        target_s = config.target_minutes * 60
+        if is_duration_off(actual_s, target_s):
+            log.warning(
+                "Thời lượng thực tế %.1fs lệch khỏi mục tiêu %.1fs (%.0f%%) — "
+                "điều chỉnh số shot hoặc narration để bám --target-minutes %.1f.",
+                actual_s,
+                target_s,
+                abs(actual_s / target_s - 1) * 100,
+                config.target_minutes,
+            )
+
     log.info("Pipeline hoàn tất. Final: %s", config.final_path)
     return config.final_path
 
@@ -347,15 +361,97 @@ def run_storyboard(config: PipelineConfig, board: Storyboard) -> Path:
         out_final=config.final_path, fps=config.fps, **assemble_kwargs,
     )
 
-    # nhạc nền (tùy chọn): trộn vào final → final_music.mp4 rồi thay thế.
-    # mix_background_music đã có afade in/out — phủ cả intro/outro card.
-    if config.music_path and Path(config.music_path).exists():
+    # nhạc nền (tùy chọn): static (hành vi cũ) hoặc emotion (đổi track theo mood).
+    if getattr(config, "music_mode", "static") == "emotion" and getattr(config, "music_library", None):
+        _mix_emotion_music(config, board, shot_audios, all_segments)
+    elif config.music_path and Path(config.music_path).exists():
+        # Static mode: mix_background_music đã có afade in/out — phủ cả intro/outro card.
         with_music = config.work_dir / "final_music.mp4"
         ffmpeg_ops.mix_background_music(
             config.final_path, Path(config.music_path), with_music, config.music_duck_db
         )
         with_music.replace(config.final_path)
-        log.info("Đã trộn nhạc nền vào final.")
+        log.info("Đã trộn nhạc nền tĩnh vào final.")
+
+    if config.target_minutes is not None:
+        actual_s = ffmpeg_ops.probe_duration(config.final_path)
+        target_s = config.target_minutes * 60
+        if is_duration_off(actual_s, target_s):
+            log.warning(
+                "Thời lượng thực tế %.1fs lệch khỏi mục tiêu %.1fs (%.0f%%) — "
+                "điều chỉnh số shot hoặc narration để bám --target-minutes %.1f.",
+                actual_s,
+                target_s,
+                abs(actual_s / target_s - 1) * 100,
+                config.target_minutes,
+            )
 
     log.info("Storyboard hoàn tất. Final: %s", config.final_path)
     return config.final_path
+
+
+def _mix_emotion_music(
+    config: "PipelineConfig",
+    board: "Storyboard",
+    shot_audios: "list[Path]",
+    all_segments: "list[Path]",
+) -> None:
+    """Trộn nhạc emotion vào final.mp4 theo mood mỗi shot.
+
+    Quy trình:
+    1. Tính thời lượng thực của từng shot audio.
+    2. Dựng music timeline (gộp mood liền kề).
+    3. Map mood → file nhạc trong music_library.
+    4. mix_emotion_tracks → emotion_music.mp3 (chỉ nhạc, không giọng).
+    5. mix_background_music (static duck) → trộn nhạc emotion vào final.
+
+    Nếu thiếu file nhạc cho 1 mood → log warning, bỏ qua mood mode, giữ nguyên final.
+    """
+    from videopipe.music import build_music_timeline
+
+    music_lib = Path(config.music_library)
+    if not music_lib.is_dir():
+        log.warning(
+            "music_library '%s' không phải thư mục — bỏ qua emotion music.",
+            music_lib,
+        )
+        return
+
+    # Tính duration thực từng shot (đúng thứ tự, không tính card).
+    shot_durs: list[float] = [ffmpeg_ops.probe_duration(a) for a in shot_audios]
+
+    timeline = build_music_timeline(board.shots, shot_durs)
+
+    # Map mood → file nhạc trong library (tên file = <mood>.mp3).
+    mood_files: dict[str, Path] = {}
+    missing: list[str] = []
+    for seg in timeline:
+        mood = seg["mood"]
+        if mood in mood_files:
+            continue
+        candidate = music_lib / f"{mood}.mp3"
+        if candidate.exists():
+            mood_files[mood] = candidate
+        else:
+            missing.append(mood)
+
+    if missing:
+        log.warning(
+            "Thiếu file nhạc cho mood %s trong '%s' — bỏ qua emotion music.",
+            missing, music_lib,
+        )
+        return
+
+    emotion_audio = config.work_dir / "_emotion_music.mp3"
+    ffmpeg_ops.mix_emotion_tracks(
+        timeline=timeline,
+        mood_files=mood_files,
+        out_audio=emotion_audio,
+    )
+
+    with_music = config.work_dir / "final_music.mp4"
+    ffmpeg_ops.mix_background_music(
+        config.final_path, emotion_audio, with_music, config.music_duck_db
+    )
+    with_music.replace(config.final_path)
+    log.info("Đã trộn nhạc emotion vào final (%d segment, %d mood).", len(timeline), len(mood_files))

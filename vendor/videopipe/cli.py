@@ -79,6 +79,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DB",
         help="Mức giảm âm nhạc so với giọng (dB). Mặc định 16.0.",
     )
+    # --- Ngân sách thời lượng ---
+    parser.add_argument(
+        "--target-minutes",
+        type=float,
+        default=None,
+        metavar="N",
+        help="Thời lượng mục tiêu (phút). Pipeline cảnh báo nếu thực tế lệch >10%%.",
+    )
     return parser
 
 
@@ -111,6 +119,10 @@ def _build_config_from_args(args: argparse.Namespace) -> PipelineConfig:
         overrides["music_path"] = args.music
     if args.music_duck_db is not None:
         overrides["music_duck_db"] = args.music_duck_db
+
+    # Ngân sách thời lượng.
+    if getattr(args, "target_minutes", None) is not None:
+        overrides["target_minutes"] = args.target_minutes
 
     return PipelineConfig(topic=args.topic, **overrides)
 
