@@ -93,44 +93,82 @@ class TestGenerateImageCodexRoute:
 
 
 class TestStdoutPathFallback:
-    """_gen_codex phải lấy path ảnh từ stdout của Codex khi dò mtime trượt.
+    """_gen_codex phải lấy path ảnh từ stdout của Codex — bất kể tên file.
 
-    Bug gặp thật (2026-06-17): Codex gen RC=0 + file ig_*.png CÓ thật, nhưng
-    _newest_image_since (so mtime) trả None → _gen_codex raise nhầm "không
-    sinh được ảnh". stdout của Codex chứa path (prompt yêu cầu report path)
-    nên parse stdout là nguồn đáng tin hơn mtime.
+    Root cause gặp thật (2026-06-17, verify bằng probe codex exec): Codex skill
+    imagegen COPY ảnh vào cwd (_imagegen_cwd) với TÊN MÔ TẢ tự đặt (vd
+    'stick-figure-waving-hello.png') và báo path đó trong stdout — KHÔNG phải
+    'ig_*.png', và lần exec đó KHÔNG tạo ig_*.png trong generated_images. Vì vậy
+    cả _newest_image_since (chỉ quét generated_images/ig_*) lẫn regex chỉ-bắt-ig_
+    đều trượt → engine raise nhầm 'không sinh được ảnh', retry 3 lần tốn token.
+    Fix: parse BẤT KỲ path .png trong stdout.
     """
 
-    def test_parse_image_path_from_stdout(self):
-        """Hàm thuần trích path ig_*.png từ stdout của Codex."""
-        import videopipe.images as img_mod
-        stdout = (
-            "I generated the image.\n"
-            "Saved file path: C:\\Users\\me\\.codex\\generated_images\\abc\\ig_0007.png\n"
-            "Done."
-        )
-        path = img_mod._parse_image_path_from_stdout(stdout)
-        assert path is not None
-        assert path.name == "ig_0007.png"
+    # stdout THẬT đã capture từ codex-cli 0.139.0 (không sửa).
+    _REAL_STDOUT = (
+        "Saved exactly one generated image here:\n\n"
+        "`C:\\Users\\sould\\.codex\\_imagegen_cwd\\stick-figure-waving-hello.png`\n"
+    )
 
-    def test_parse_image_path_from_stdout_none(self):
-        """Không có path trong stdout → trả None (để fallback mtime)."""
+    def test_parse_real_codex_stdout(self):
+        """stdout thật (tên mô tả, bao backtick) → parse ra đúng path .png."""
+        import videopipe.images as img_mod
+        path = img_mod._parse_image_path_from_stdout(self._REAL_STDOUT)
+        assert path is not None
+        assert path.name == "stick-figure-waving-hello.png"
+
+    def test_parse_windows_png_no_ig(self):
+        """Path Windows tên bất kỳ (không 'ig_') vẫn parse được."""
+        import videopipe.images as img_mod
+        path = img_mod._parse_image_path_from_stdout(
+            "Done. Saved file path: C:\\tmp\\scene-cool.png"
+        )
+        assert path is not None and path.name == "scene-cool.png"
+
+    def test_parse_posix_png_no_ig(self):
+        """Path POSIX không 'ig_' vẫn parse được."""
+        import videopipe.images as img_mod
+        path = img_mod._parse_image_path_from_stdout(
+            "saved to /home/u/.codex/_imagegen_cwd/hello.png\n"
+        )
+        assert path is not None and path.name == "hello.png"
+
+    def test_parse_strips_backtick(self):
+        """Path bao trong backtick markdown → trả path sạch, không dính backtick."""
+        import videopipe.images as img_mod
+        path = img_mod._parse_image_path_from_stdout("`C:\\a\\b.png`")
+        assert path is not None
+        assert "`" not in str(path) and path.name == "b.png"
+
+    def test_parse_none_when_no_png(self):
+        """Không có .png trong stdout → None (để fallback mtime)."""
         import videopipe.images as img_mod
         assert img_mod._parse_image_path_from_stdout("no image here") is None
 
-    def test_gen_codex_uses_stdout_when_mtime_misses(self, tmp_path: Path):
-        """mtime trượt (_newest_image_since=None) nhưng stdout có path → vẫn copy được."""
+    def test_parse_picks_last_png(self):
+        """Nhiều .png (vd ref echo lại) → lấy path CUỐI (ảnh kết quả Codex báo cuối)."""
+        import videopipe.images as img_mod
+        stdout = (
+            "Reference image: C:\\refs\\style_sheet.png\n"
+            "Saved exactly one generated image here:\n"
+            "`C:\\out\\result.png`\n"
+        )
+        path = img_mod._parse_image_path_from_stdout(stdout)
+        assert path is not None and path.name == "result.png"
+
+    def test_gen_codex_uses_stdout_path(self, tmp_path: Path):
+        """_newest_image_since=None nhưng stdout có path file thật → copy, KHÔNG raise."""
         from videopipe.config import StylePreset
         import videopipe.images as img_mod
 
         out = tmp_path / "out.png"
-        real_png = tmp_path / "ig_0042.png"
+        real_png = tmp_path / "stick-figure-waving-hello.png"
         real_png.write_bytes(b"\x89PNG\r\n")
 
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stderr = ""
-        mock_proc.stdout = f"Saved file path: {real_png}\n"
+        mock_proc.stdout = f"Saved exactly one generated image here:\n`{real_png}`\n"
 
         with (
             patch.object(img_mod, "_codex_exe", return_value="codex"),

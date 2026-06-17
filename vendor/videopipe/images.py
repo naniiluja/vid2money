@@ -6,12 +6,16 @@ Backend duy nhất: Codex CLI (gpt-image-2 qua image_gen skill).
   sinh ảnh ngay → ta:
     1. Ghi mốc thời gian trước khi gọi.
     2. Gọi `codex exec` với prompt yêu cầu rõ "dùng imagegen skill, sinh và lưu 1 ảnh".
-    3. ƯU TIÊN: parse path ig_*.png từ stdout của Codex (prompt yêu cầu report
-       path). Fallback: glob ĐỆ QUY ~/.codex/generated_images/**/ig_*.png chọn
-       file mtime > mốc. (So-mtime đơn lẻ có thể TRƯỢT dù file có thật.)
+    3. ƯU TIÊN: parse path .png (bất kỳ tên) từ stdout của Codex (prompt yêu
+       cầu report path). Codex COPY ảnh vào cwd với tên MÔ TẢ tự đặt (không
+       phải ig_*.png) — xem _PNG_PATH_RE. Fallback: glob ĐỆ QUY
+       ~/.codex/generated_images/**/ig_*.png chọn file mtime > mốc.
     4. Bounded retry nếu không thấy ảnh mới.
-    5. Copy ảnh ra out_path.
-  Đã verify: ảnh lưu ở ~/.codex/generated_images/<uuid>/ig_*.png ($CODEX_HOME unset).
+    5. Copy ảnh ra out_path NGAY trong vòng lặp (trước lần exec kế gọi
+       _neutral_cwd dọn sạch *.png trong cwd).
+  Đã verify (codex-cli 0.139.0): stdout báo path bản copy trong cwd, vd
+  `~/.codex/_imagegen_cwd/<ten-mo-ta>.png`; bản ig_*.png trong generated_images
+  có thể KHÔNG xuất hiện cho mọi lần gen → KHÔNG dựa duy nhất vào generated_images.
 """
 
 from __future__ import annotations
@@ -92,26 +96,30 @@ def _newest_image_since(since: float) -> Path | None:
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
-# Regex bắt path file ig_*.png trong stdout của Codex (prompt yêu cầu Codex
-# "report the saved file path"). Bắt cả Windows (C:\...\ig_x.png) lẫn POSIX.
-_IG_PATH_RE = re.compile(r"[A-Za-z]:[\\/][^\r\n\"']*?ig_[^\r\n\"'\\/]*\.png|/[^\r\n\"']*?ig_[^\r\n\"'/]*\.png")
+# Regex bắt path file .png trong stdout của Codex.
+# QUAN TRỌNG (verify codex-cli 0.139.0): Codex skill imagegen COPY ảnh vào cwd
+# với TÊN MÔ TẢ tự đặt (vd 'stick-figure-waving-hello.png') — KHÔNG phải
+# 'ig_*.png' — rồi báo path đó trong stdout (thường bao trong backtick markdown).
+# Vì vậy regex KHÔNG được bó 'ig_'; bắt bất kỳ path .png (Windows C:\... lẫn POSIX).
+_PNG_PATH_RE = re.compile(r"[A-Za-z]:[\\/][^\r\n\"'`]*?\.png|/[^\r\n\"'`]*?\.png")
 
 
 def _parse_image_path_from_stdout(stdout: str) -> Path | None:
-    """Trích path ảnh ig_*.png từ stdout của Codex (hàm THUẦN, không đụng FS).
+    """Trích path ảnh .png từ stdout của Codex (hàm THUẦN, không đụng FS).
 
     Đáng tin hơn so-mtime: Codex báo path file đã lưu trong stdout (xem
-    _build_prompt — yêu cầu "report the saved file path"). So-mtime có thể
-    TRƯỢT (độ phân giải/đồng bộ mtime của filesystem) dù file có thật, gây
-    raise nhầm "không sinh được ảnh". Trả path KHỚP regex cuối cùng (mới nhất
-    trong log) hoặc None. Việc kiểm tồn tại để caller _gen_codex lo.
+    _build_prompt — yêu cầu "report the saved file path"). So-mtime + quét
+    generated_images/ig_* có thể TRƯỢT vì ảnh thật nằm trong cwd với tên mô tả
+    (xem comment _PNG_PATH_RE). Trả path .png CUỐI cùng trong stdout (Codex báo
+    file kết quả ở cuối, sau khi đã gen — nếu có ref path echo trước thì ref
+    đứng trước) hoặc None. Việc kiểm tồn tại để caller _gen_codex lo.
     """
     if not isinstance(stdout, str) or not stdout:
         return None
-    matches = _IG_PATH_RE.findall(stdout)
+    matches = _PNG_PATH_RE.findall(stdout)
     if not matches:
         return None
-    return Path(matches[-1].strip().strip("'\""))
+    return Path(matches[-1].strip().strip("'\"`"))
 
 
 def _build_prompt(prompt: str, style: StylePreset, size: str, ref_image: Path | None) -> str:
