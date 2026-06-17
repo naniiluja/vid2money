@@ -90,3 +90,62 @@ class TestGenerateImageCodexRoute:
             assert not hasattr(img_mod, name), (
                 f"images.py vẫn còn '{name}' — chưa purge."
             )
+
+
+class TestStdoutPathFallback:
+    """_gen_codex phải lấy path ảnh từ stdout của Codex khi dò mtime trượt.
+
+    Bug gặp thật (2026-06-17): Codex gen RC=0 + file ig_*.png CÓ thật, nhưng
+    _newest_image_since (so mtime) trả None → _gen_codex raise nhầm "không
+    sinh được ảnh". stdout của Codex chứa path (prompt yêu cầu report path)
+    nên parse stdout là nguồn đáng tin hơn mtime.
+    """
+
+    def test_parse_image_path_from_stdout(self):
+        """Hàm thuần trích path ig_*.png từ stdout của Codex."""
+        import videopipe.images as img_mod
+        stdout = (
+            "I generated the image.\n"
+            "Saved file path: C:\\Users\\me\\.codex\\generated_images\\abc\\ig_0007.png\n"
+            "Done."
+        )
+        path = img_mod._parse_image_path_from_stdout(stdout)
+        assert path is not None
+        assert path.name == "ig_0007.png"
+
+    def test_parse_image_path_from_stdout_none(self):
+        """Không có path trong stdout → trả None (để fallback mtime)."""
+        import videopipe.images as img_mod
+        assert img_mod._parse_image_path_from_stdout("no image here") is None
+
+    def test_gen_codex_uses_stdout_when_mtime_misses(self, tmp_path: Path):
+        """mtime trượt (_newest_image_since=None) nhưng stdout có path → vẫn copy được."""
+        from videopipe.config import StylePreset
+        import videopipe.images as img_mod
+
+        out = tmp_path / "out.png"
+        real_png = tmp_path / "ig_0042.png"
+        real_png.write_bytes(b"\x89PNG\r\n")
+
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stderr = ""
+        mock_proc.stdout = f"Saved file path: {real_png}\n"
+
+        with (
+            patch.object(img_mod, "_codex_exe", return_value="codex"),
+            patch.object(img_mod, "_neutral_cwd", return_value=tmp_path),
+            patch.object(img_mod, "_newest_image_since", return_value=None),
+            patch("subprocess.run", return_value=mock_proc),
+        ):
+            result = img_mod._gen_codex(
+                prompt="a test scene",
+                out_path=out,
+                style=StylePreset(),
+                size="1536x1024",
+                ref_image=None,
+                max_attempts=1,
+                timeout_s=10,
+            )
+        assert result == out
+        assert out.exists() and out.stat().st_size > 0
