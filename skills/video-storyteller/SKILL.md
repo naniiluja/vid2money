@@ -25,16 +25,15 @@ Parse JSON trả về (`tools`, `recommended_backend`, `blockers`, `warnings`):
 
 ---
 
-## Bước 2 — Làm rõ chủ đề và phong cách
+## Bước 2 — Phỏng vấn chi tiết qua grill-video
 
-Nếu user chưa cho biết đủ thông tin, hỏi:
-1. **Chủ đề** cụ thể (không hỏi nếu đã rõ từ `/create-video <chủ đề>`).
-2. **Phong cách** — gợi ý:
-   - `stick-figure` (mặc định): whiteboard explainer, người que, giải thích khái niệm.
-   - `cinematic`: kể chuyện tối/huyền bí, có nhân vật phức tạp hơn.
-   - Xem thêm: `references/styles.md`.
+Gọi skill **`grill-video`** qua Skill tool để phỏng vấn người dùng **từng câu một**, thu thập đủ chi tiết trước khi viết storyboard. **Nhúng chủ đề thẳng vào câu gọi** dưới dạng văn bản, ví dụ:
 
-Không hỏi quá 2 câu — nếu chủ đề và phong cách đã đủ từ `/create-video`, đi thẳng bước 3.
+> Invoke skill `grill-video`. Chủ đề người dùng đã cho: **$ARGUMENTS** — bỏ qua câu hỏi chủ đề nếu đã đủ rõ.
+
+grill-video sẽ trả về một block `## Chi tiết đã thu thập` gồm: chủ đề/góc kể/thông điệp, thời lượng (`--target-minutes`), style (`--style`), VFX (`--vfx`), nhạc (`--music-mode`), đối tượng khán giả, outro (`--outro-text`). **Map các giá trị này vào flag pipeline ở Bước 3/4** (đối tượng khán giả chỉ định hướng tone narration, không phải flag).
+
+**Verify tích cực — KHÔNG im lặng bỏ qua interview:** nếu grill-video không được gọi hoặc không trả về summary, hỏi tối thiểu **chủ đề + style** ngay tại đây (fallback) rồi mới sang Bước 3 — đừng nhảy thẳng vào viết storyboard khi chưa có chi tiết.
 
 ---
 
